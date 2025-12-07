@@ -2,8 +2,6 @@
 
 Graviti is a full-stack event management and booking system designed to provide a seamless experience for users to discover, book, and manage event tickets. It features a robust **Admin Dashboard**, **Real-time Seat Locking**, **QR Code Ticket Generation**, and **Interactive Maps**.
 
-![Project Banner](https://via.placeholder.com/1200x500?text=Graviti+Event+Booking+System)
-*(Replace this link with a screenshot of your Home Page)*
 
 ## 🚀 Features
 
