@@ -161,7 +161,7 @@ const AdminPage = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Revenue</p>
-                      <p className="text-3xl font-bold">${totalRevenue.toFixed(2)}</p>
+                      <p className="text-3xl font-bold">₹{totalRevenue.toFixed(2)}</p>
                       <p className="text-xs text-success mt-1 flex items-center gap-1">
                         <TrendingUp className="h-3 w-3" /> +8% this month
                       </p>
