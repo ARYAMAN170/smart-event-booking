@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Download } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import TicketModal from "@/components/TicketGenerator";
 
 interface TicketGeneratorProps {
   bookingId: string;
@@ -11,6 +13,8 @@ interface TicketGeneratorProps {
 }
 
 export function TicketGenerator({ bookingId, event, quantity }: TicketGeneratorProps) {
+  const [showTicket, setShowTicket] = useState(false);
+
   return (
     <div className="max-w-md mx-auto text-center space-y-6 py-8">
       <div className="flex justify-center">
@@ -45,7 +49,7 @@ export function TicketGenerator({ bookingId, event, quantity }: TicketGeneratorP
           </div>
           <div className="pt-4 border-t flex justify-between items-center">
             <span className="text-muted-foreground">Total Paid</span>
-            <span className="text-xl font-bold">${event.price * quantity}</span>
+            <span className="text-xl font-bold">₹{event.price * quantity}</span>
           </div>
         </CardContent>
       </Card>
@@ -54,11 +58,26 @@ export function TicketGenerator({ bookingId, event, quantity }: TicketGeneratorP
         <Link to="/">
           <Button variant="outline">Back to Events</Button>
         </Link>
-        <Button className="gap-2">
+        <Button 
+          className="gap-2 bg-yellow-400 text-black hover:bg-yellow-500 transition-all hover:scale-105 shadow-lg"
+          onClick={() => setShowTicket(true)}
+        >
           <Download className="h-4 w-4" />
           Download Ticket
         </Button>
       </div>
+
+      {showTicket && (
+        <TicketModal 
+          bookingData={{
+            bookingId: bookingId,
+            eventName: event.title,
+            quantity: quantity,
+            totalAmount: event.price * quantity
+          }}
+          onClose={() => setShowTicket(false)}
+        />
+      )}
     </div>
   );
 }

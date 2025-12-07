@@ -6,7 +6,7 @@ import { X, Download } from "lucide-react";
 
 interface TicketGeneratorProps {
   bookingData: {
-    bookingId: number;
+    bookingId: number | string;
     eventName: string;
     quantity: number;
     totalAmount: number;
