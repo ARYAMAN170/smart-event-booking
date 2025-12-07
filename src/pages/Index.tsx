@@ -7,6 +7,7 @@ import { fetchEvents, EventData } from "@/utils/api";
 import { Sparkles, Calendar, ArrowRight, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import Threads from "@/components/Bg";
 
 const heroTitleVariants = {
   hidden: { opacity: 0, y: 40 },
@@ -102,9 +103,14 @@ const Index = () => {
       {/* Hero Section */}
       <section className="relative overflow-hidden min-h-[85vh] md:min-h-[100vh] rounded-b-[10vw] md:rounded-b-[15vw] flex items-center justify-center bg-gradient-to-br from-violet-500 to-purple-700">
         {/* Background Elements */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[length:200%_200%] bg-gradient-to-r from-violet-400 via-purple-500 to-fuchsia-900 opacity-50 mix-blend-soft-light animate-gradient-slow" />
-        <div className="absolute top-0 left-0  w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10" />
+        <div className="absolute inset-0 w-full h-full">
+          <Threads
+            amplitude={1}
+            distance={0}
+            enableMouseInteraction={true}
+            color={[0.99, 0.94, 0.54]} // Yellow-200 accent
+          />
+        </div>
         
         <div className="container relative z-10 py-12 md:py-24 px-4">
           <motion.div 
@@ -154,7 +160,11 @@ const Index = () => {
               transition={{ delay: 0.4, duration: 0.5 }}
               className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6 px-4 sm:px-0"
             >
-              <Button size="lg" className="w-full sm:w-auto h-12 sm:h-14 px-8 text-base sm:text-lg gap-2 bg-white text-purple-700 hover:bg-white/90 shadow-lg transition-all duration-300 rounded-full font-semibold">
+              <Button 
+                size="lg" 
+                className="w-full sm:w-auto h-12 sm:h-14 px-8 text-base sm:text-lg gap-2 bg-white text-purple-700 hover:bg-white/90 shadow-lg transition-all duration-300 rounded-full font-semibold"
+                onClick={() => document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' })}
+              >
                 Explore Events
                 <ArrowRight className="h-5 w-5" />
               </Button>
@@ -170,7 +180,7 @@ const Index = () => {
       </section>
 
       {/* Events Section */}
-      <section className="container py-12">
+      <section id="events-section" className="container py-12">
         <div className="mb-8">
           <EventFilters
             search={search}
