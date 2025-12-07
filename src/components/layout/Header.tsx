@@ -124,7 +124,7 @@ export function Header() {
                     variant={isActive ? "secondary" : "ghost"}
                     className={cn(
                       "w-full justify-start gap-2",
-                      isActive && "bg-primary/10 text-primary"
+                      isActive ? "bg-accent text-accent-foreground" : "text-white hover:bg-white/10 hover:text-white"
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -141,7 +141,7 @@ export function Header() {
                 </div>
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  className="w-full justify-start gap-2 text-red-200 hover:text-red-100 hover:bg-red-500/20"
                   onClick={() => {
                     setMobileMenuOpen(false);
                     handleLogout();
@@ -153,7 +153,7 @@ export function Header() {
               </>
             ) : (
               <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="outline" className="w-full gap-2 mt-2">
+                <Button variant="outline" className="w-full gap-2 mt-2 bg-white text-purple-700 hover:bg-white/90 border-none">
                   <LogIn className="h-4 w-4" />
                   Sign In
                 </Button>

@@ -256,7 +256,7 @@ const AdminPage = () => {
                           </div>
                           <div className="text-right">
                             <p className={`font-medium ${booking.status === 'cancelled' ? 'text-muted-foreground line-through' : ''}`}>
-                              ${booking.total_amount}
+                              ₹{booking.total_amount}
                             </p>
                             {booking.status === 'cancelled' ? (
                               <span className="text-xs text-destructive font-medium">Cancelled</span>
@@ -390,7 +390,7 @@ const AdminPage = () => {
                             {booking.quantity}
                           </TableCell>
                           <TableCell className={`text-right font-medium ${booking.status === 'cancelled' ? 'text-muted-foreground line-through' : ''}`}>
-                            ${booking.total_amount}
+                            ₹{booking.total_amount}
                           </TableCell>
                         </TableRow>
                       );

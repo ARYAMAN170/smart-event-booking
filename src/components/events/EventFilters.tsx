@@ -44,14 +44,14 @@ export function EventFilters({
 
   return (
     <div className="space-y-6">
-      <div className="relative max-w-2xl mx-auto flex gap-2">
+      <div className="relative max-w-2xl mx-auto flex flex-col sm:flex-row gap-3 sm:gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/70" />
           <Input
             placeholder="Search events..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-12 pr-12 py-6 text-lg bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-accent/50 focus:ring-accent/20 rounded-full backdrop-blur-sm transition-all hover:bg-white/20"
+            className="pl-12 pr-12 py-6 text-base sm:text-lg bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-accent/50 focus:ring-accent/20 rounded-full backdrop-blur-sm transition-all hover:bg-white/20 w-full"
           />
           {search && (
             <Button
@@ -67,7 +67,7 @@ export function EventFilters({
         
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="h-auto px-6 rounded-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white gap-2">
+            <Button variant="outline" className="h-12 sm:h-auto w-full sm:w-auto px-6 rounded-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white gap-2">
               <Filter className="h-4 w-4" />
               Filters
               {(selectedLocations.length > 0 || priceRange[0] < maxPrice) && (
