@@ -1,30 +1,61 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockEvents, ticketTypes } from "@/data/mockData";
+import { Input } from "@/components/ui/input";
+import { fetchEvents, createBooking, EventData } from "@/utils/api";
+import { TicketGenerator } from "@/components/events/TicketGenerator";
+import { MapViewer } from "@/components/events/MapViewer";
 import { format } from "date-fns";
 import {
   Calendar,
-  Clock,
   MapPin,
   Users,
   Share2,
   Heart,
   ChevronLeft,
-  Ticket,
-  Minus,
-  Plus,
+  Loader2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 const EventDetailPage = () => {
   const { id } = useParams();
-  const event = mockEvents.find((e) => e.id === id);
+  const navigate = useNavigate();
+  const [event, setEvent] = useState<EventData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [ticketCount, setTicketCount] = useState(1);
-  const [selectedTicketType, setSelectedTicketType] = useState(ticketTypes[0]);
+  const [mobile, setMobile] = useState("");
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [isBooking, setIsBooking] = useState(false);
+
+  useEffect(() => {
+    const loadEvent = async () => {
+      try {
+        const events = await fetchEvents();
+        const foundEvent = events.find((e) => e.id.toString() === id);
+        setEvent(foundEvent || null);
+      } catch (error) {
+        console.error("Failed to load event", error);
+        toast.error("Failed to load event details");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadEvent();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center min-h-[60vh]">
+          <Loader2 className="h-10 w-10 animate-spin text-accent" />
+        </div>
+      </Layout>
+    );
+  }
 
   if (!event) {
     return (
@@ -39,23 +70,53 @@ const EventDetailPage = () => {
     );
   }
 
-  const spotsLeft = event.capacity - event.bookedCount;
-  const totalPrice = event.price
-    ? (event.price + selectedTicketType.price) * ticketCount
-    : selectedTicketType.price * ticketCount;
+  if (bookingSuccess && bookingId && event) {
+    return (
+      <Layout>
+        <div className="container py-16">
+          <TicketGenerator bookingId={bookingId} event={event} quantity={ticketCount} />
+        </div>
+      </Layout>
+    );
+  }
 
-  const handleBooking = () => {
-    toast.success("Booking added to cart!", {
-      description: `${ticketCount}x ${event.title}`,
-    });
+  const spotsLeft = event.available_seats;
+  const totalPrice = event.price * ticketCount;
+
+  const handleBooking = async () => {
+    if (!mobile) {
+      toast.error("Please enter your mobile number");
+      return;
+    }
+
+    setIsBooking(true);
+    try {
+      const response = await createBooking({
+        event_id: event.id,
+        quantity: ticketCount,
+        mobile: mobile,
+      });
+      
+      setBookingId(response.bookingId || "BK-" + Date.now());
+      setBookingSuccess(true);
+      toast.success("Booking confirmed!");
+    } catch (error: any) {
+      console.error("Booking failed", error);
+      if (error.response && error.response.status === 401) {
+        toast.error("Please login to book tickets");
+      } else {
+        toast.error("Booking failed. Please try again.");
+      }
+    } finally {
+      setIsBooking(false);
+    }
   };
 
   return (
     <Layout>
-      {/* Hero Image */}
       <div className="relative h-64 md:h-96 overflow-hidden">
         <img
-          src={event.image}
+          src={event.img}
           alt={event.title}
           className="w-full h-full object-cover"
         />
@@ -72,19 +133,10 @@ const EventDetailPage = () => {
 
       <div className="container -mt-24 relative z-10 pb-12">
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Event Details */}
           <div className="lg:col-span-2 space-y-6">
             <Card className="border-border/50">
               <CardContent className="p-6 md:p-8">
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <Badge className="gradient-primary text-primary-foreground">
-                    {event.category}
-                  </Badge>
-                  {event.isFeatured && (
-                    <Badge className="bg-accent text-accent-foreground">
-                      Featured
-                    </Badge>
-                  )}
                   {!event.price && (
                     <Badge className="bg-success text-success-foreground">
                       Free Event
@@ -99,11 +151,7 @@ const EventDetailPage = () => {
                 <div className="flex flex-wrap gap-4 text-muted-foreground mb-6">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-primary" />
-                    {format(event.date, "EEEE, MMMM d, yyyy")}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-secondary" />
-                    {event.time}
+                    {format(new Date(event.date), "EEEE, MMMM d, yyyy")}
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-accent" />
@@ -112,50 +160,33 @@ const EventDetailPage = () => {
                 </div>
 
                 <div className="flex gap-2 mb-8">
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button variant="outline" size="sm" className="gap-2 bg-white border-gray-200 text-purple-700 hover:bg-purple-50">
                     <Share2 className="h-4 w-4" />
                     Share
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button variant="outline" size="sm" className="gap-2 bg-white border-gray-200 text-purple-700 hover:bg-purple-50">
                     <Heart className="h-4 w-4" />
                     Save
                   </Button>
                 </div>
 
-                <div className="prose prose-gray dark:prose-invert max-w-none">
+                <div className="prose prose-gray dark:prose-invert max-w-none mb-8">
                   <h3 className="font-display text-xl font-bold mb-3">About This Event</h3>
                   <p className="text-muted-foreground leading-relaxed">
                     {event.description}
                   </p>
-                  <p className="text-muted-foreground leading-relaxed mt-4">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-                    tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-                    quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
-                    consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
-                    cillum dolore eu fugiat nulla pariatur.
-                  </p>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Location Card */}
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-accent" />
-                  Location
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">{event.location}</p>
-                <div className="aspect-video rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
-                  Map placeholder
+                <div className="space-y-4">
+                  <h3 className="font-display text-lg font-bold flex items-center gap-2">
+                    📍 Event Location
+                  </h3>
+                  <MapViewer location={event.location} />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Booking Card */}
           <div className="lg:col-span-1">
             <Card className="sticky top-24 border-border/50">
               <CardHeader className="border-b border-border">
@@ -168,96 +199,68 @@ const EventDetailPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
-                {/* Ticket Type Selection */}
+                
                 <div className="space-y-3">
-                  <label className="text-sm font-medium">Ticket Type</label>
-                  {ticketTypes.map((type) => (
-                    <div
-                      key={type.id}
-                      onClick={() => setSelectedTicketType(type)}
-                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                        selectedTicketType.id === type.id
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-medium">{type.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {type.description}
-                          </p>
-                        </div>
-                        <span className="font-bold">
-                          {type.price === 0 ? "Free" : `+$${type.price}`}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                  <label className="text-sm font-medium text-gray-700">Mobile Number</label>
+                  <Input 
+                    placeholder="Enter your mobile number" 
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value)}
+                    className="bg-white text-black border-gray-200 placeholder:text-gray-400 focus-visible:ring-purple-500"
+                  />
                 </div>
 
-                {/* Quantity */}
                 <div className="space-y-3">
-                  <label className="text-sm font-medium">Quantity</label>
+                  <label className="text-sm font-medium text-gray-700">Quantity</label>
                   <div className="flex items-center gap-4">
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => setTicketCount(Math.max(1, ticketCount - 1))}
                       disabled={ticketCount <= 1}
+                      className="bg-white border-gray-200 text-black hover:bg-gray-50 disabled:opacity-50"
                     >
-                      <Minus className="h-4 w-4" />
+                      -
                     </Button>
-                    <span className="text-xl font-bold w-8 text-center">
+                    <span className="text-xl font-bold w-8 text-center text-gray-900">
                       {ticketCount}
                     </span>
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => setTicketCount(Math.min(10, ticketCount + 1))}
-                      disabled={ticketCount >= 10 || ticketCount >= spotsLeft}
+                      disabled={ticketCount >= 10}
+                      className="bg-white border-gray-200 text-black hover:bg-gray-50 disabled:opacity-50"
                     >
-                      <Plus className="h-4 w-4" />
+                      +
                     </Button>
                   </div>
                 </div>
 
-                {/* Price Summary */}
-                <div className="border-t border-border pt-4 space-y-2">
-                  {event.price && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Base price × {ticketCount}
-                      </span>
-                      <span>${event.price * ticketCount}</span>
-                    </div>
-                  )}
-                  {selectedTicketType.price > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        {selectedTicketType.name} upgrade × {ticketCount}
-                      </span>
-                      <span>${selectedTicketType.price * ticketCount}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
-                    <span>Total</span>
-                    <span className="text-gradient-primary">
-                      {totalPrice === 0 ? "Free" : `$${totalPrice}`}
+                <div className="pt-4 border-t border-border">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="text-2xl font-bold">
+                      ₹{totalPrice}
                     </span>
                   </div>
-                </div>
-
-                <Link to={`/booking/${event.id}`}>
-                  <Button
-                    className="w-full gap-2 gradient-primary text-primary-foreground hover:opacity-90"
-                    size="lg"
+                  <Button 
+                    className="w-full text-lg py-6" 
                     onClick={handleBooking}
+                    disabled={isBooking || spotsLeft === 0}
                   >
-                    <Ticket className="h-5 w-5" />
-                    Book Now
+                    {isBooking ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : spotsLeft === 0 ? (
+                      "Sold Out"
+                    ) : (
+                      "Confirm Booking"
+                    )}
                   </Button>
-                </Link>
+                </div>
               </CardContent>
             </Card>
           </div>

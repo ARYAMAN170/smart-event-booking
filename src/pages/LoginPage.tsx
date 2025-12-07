@@ -1,154 +1,138 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { loginUser } from "@/utils/api";
+import { Eye, EyeOff } from "lucide-react";
 
 const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const data = await loginUser({ email, password });
+      localStorage.setItem("token", data.token);
+      // Store user info if available, or decode token. For now, mock admin role if email is admin
+      const user = { email, role: email.includes("admin") ? "admin" : "user" };
+      localStorage.setItem("user", JSON.stringify(user));
+      
+      toast.success("Logged in successfully!");
+      navigate(user.role === "admin" ? "/admin" : "/");
+    } catch (error) {
+      toast.error("Login failed. Please check your credentials.");
+    } finally {
       setIsLoading(false);
-      toast.success("Authentication would happen here!");
-    }, 1500);
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.1),transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,hsl(var(--accent)/0.1),transparent_50%)]" />
-
-      <div className="w-full max-w-md relative">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-violet-500 to-purple-700">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
+      
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-primary">
-              <span className="text-xl font-bold text-primary-foreground">G</span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-purple-700">
+              <span className="text-xl font-bold">G</span>
             </div>
-            <span className="font-display text-2xl font-bold text-gradient-primary">
+            <span className="font-display text-2xl font-bold text-white">
               Graviti
             </span>
           </Link>
-          <p className="text-muted-foreground">
+          <p className="text-white/80">
             Sign in to manage your events and bookings
           </p>
         </div>
 
-        <Card className="border-border/50 shadow-xl">
+        <Card className="border-white/20 shadow-xl bg-white/95 backdrop-blur-sm">
           <CardContent className="p-6">
-            <Tabs defaultValue="signin">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="signin">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" className="rounded" />
-                      Remember me
-                    </label>
-                    <a href="#" className="text-primary hover:underline">
-                      Forgot password?
-                    </a>
-                  </div>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="signin-email">Email</Label>
+                <Input
+                  id="signin-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  required
+                  className="bg-white"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signin-password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="signin-password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    required
+                    className="bg-white pr-10"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
                   <Button
-                    type="submit"
-                    className="w-full gradient-primary text-primary-foreground"
-                    disabled={isLoading}
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
                   >
-                    {isLoading ? "Signing in..." : "Sign In"}
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
                   </Button>
-                </form>
-              </TabsContent>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="rounded border-gray-300" />
+                  Remember me
+                </label>
+                <a href="#" className="text-purple-600 hover:underline">
+                  Forgot password?
+                </a>
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                disabled={isLoading}
+              >
+                {isLoading ? "Signing in..." : "Sign In"}
+              </Button>
+            </form>
 
-              <TabsContent value="signup">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-firstname">First Name</Label>
-                      <Input id="signup-firstname" placeholder="John" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-lastname">Last Name</Label>
-                      <Input id="signup-lastname" placeholder="Doe" required />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-confirm">Confirm Password</Label>
-                    <Input
-                      id="signup-confirm"
-                      type="password"
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full gradient-primary text-primary-foreground"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Creating account..." : "Create Account"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+            <div className="text-center mt-4 text-sm text-gray-600">
+              Don't have an account?{" "}
+              <Link to="/register" className="text-purple-600 hover:underline font-medium">
+                Sign up
+              </Link>
+            </div>
 
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
+                <div className="w-full border-t border-gray-200" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
+                <span className="bg-white px-2 text-muted-foreground">
                   Or continue with
                 </span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full bg-white hover:bg-gray-50 text-black border-gray-200">
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
@@ -169,7 +153,7 @@ const LoginPage = () => {
                 </svg>
                 Google
               </Button>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full bg-white hover:bg-gray-50 text-black border-gray-200">
                 <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
                 </svg>
@@ -179,13 +163,13 @@ const LoginPage = () => {
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
+        <p className="text-center text-sm text-white/60 mt-6">
           By continuing, you agree to our{" "}
-          <a href="#" className="text-primary hover:underline">
+          <a href="#" className="text-white hover:underline">
             Terms of Service
           </a>{" "}
           and{" "}
-          <a href="#" className="text-primary hover:underline">
+          <a href="#" className="text-white hover:underline">
             Privacy Policy
           </a>
         </p>

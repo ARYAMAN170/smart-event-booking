@@ -1,6 +1,5 @@
 import { Layout } from "@/components/layout/Layout";
 import { EventCalendar } from "@/components/calendar/EventCalendar";
-import { mockEvents } from "@/data/mockData";
 import { Button } from "@/components/ui/button";
 import { LayoutGrid, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -30,7 +29,7 @@ const CalendarPage = () => {
           </div>
         </div>
 
-        <EventCalendar events={mockEvents} />
+        <EventCalendar />
       </div>
     </Layout>
   );

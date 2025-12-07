@@ -1,35 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Event } from "@/data/mockData";
-import { format, isSameDay } from "date-fns";
+import { fetchEvents, EventData } from "@/utils/api";
+import { format, isSameDay, parseISO } from "date-fns";
 import { CalendarDays, MapPin, Clock, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
-interface EventCalendarProps {
-  events: Event[];
-}
-
-export function EventCalendar({ events }: EventCalendarProps) {
+export function EventCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [allEvents, setAllEvents] = useState<EventData[]>([]);
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      try {
+        const data = await fetchEvents();
+        setAllEvents(data);
+      } catch (err) {
+        console.error("Failed to fetch events", err);
+      }
+    };
+    loadEvents();
+  }, []);
 
   const eventsOnSelectedDate = selectedDate
-    ? events.filter((event) => isSameDay(event.date, selectedDate))
+    ? allEvents.filter((event) => isSameDay(parseISO(event.date), selectedDate))
     : [];
 
-  const eventDates = events.map((event) => event.date);
+  const eventDates = allEvents.map((event) => parseISO(event.date));
 
   const modifiers = {
     hasEvent: (date: Date) => eventDates.some((eventDate) => isSameDay(date, eventDate)),
-  };
-
-  const modifiersStyles = {
-    hasEvent: {
-      fontWeight: "bold",
-    },
   };
 
   return (
@@ -69,11 +72,13 @@ export function EventCalendar({ events }: EventCalendarProps) {
               day_disabled: "text-muted-foreground opacity-50",
             }}
             modifiers={modifiers}
-            modifiersStyles={modifiersStyles}
+            modifiersClassNames={{
+              hasEvent: "bg-purple-100 dark:bg-purple-900/30 font-bold text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700/50",
+            }}
             components={{
               DayContent: ({ date }) => {
                 const hasEvents = eventDates.some((d) => isSameDay(d, date));
-                const eventCount = events.filter((e) => isSameDay(e.date, date)).length;
+                const eventCount = allEvents.filter((e) => isSameDay(parseISO(e.date), date)).length;
                 return (
                   <div className="flex flex-col items-center gap-1">
                     <span>{date.getDate()}</span>
@@ -138,7 +143,7 @@ export function EventCalendar({ events }: EventCalendarProps) {
                         <div className="flex flex-wrap gap-2 mt-2 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {event.time}
+                            {format(parseISO(event.date), "h:mm a")}
                           </span>
                           <span className="flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
@@ -146,12 +151,9 @@ export function EventCalendar({ events }: EventCalendarProps) {
                           </span>
                         </div>
                         <div className="flex items-center gap-2 mt-2">
-                          <Badge variant="outline" className="text-xs">
-                            {event.category}
-                          </Badge>
                           {event.price ? (
                             <Badge variant="secondary" className="text-xs">
-                              ${event.price}
+                              ₹{event.price}
                             </Badge>
                           ) : (
                             <Badge className="bg-success/20 text-success text-xs">

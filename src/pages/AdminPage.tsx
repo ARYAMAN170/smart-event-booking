@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { mockEvents, mockBookings, mockClients } from "@/data/mockData";
+import { fetchEvents, fetchAllBookings, deleteEvent, EventData, BookingResponse } from "@/utils/api";
+import { CreateEventDialog } from "@/components/admin/CreateEventDialog";
+import { EditEventDialog } from "@/components/admin/EditEventDialog";
 import { format } from "date-fns";
 import {
   LayoutDashboard,
@@ -20,24 +22,73 @@ import {
   Users,
   DollarSign,
   TrendingUp,
-  Plus,
   Edit,
   Trash2,
   Eye,
+  Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 const AdminPage = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [events, setEvents] = useState<EventData[]>([]);
+  const [bookings, setBookings] = useState<BookingResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      const [eventsData, bookingsData] = await Promise.all([
+        fetchEvents(),
+        fetchAllBookings(),
+      ]);
+      setEvents(eventsData);
+      setBookings(bookingsData);
+    } catch (error) {
+      console.error("Failed to fetch data", error);
+      toast.error("Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteEvent = async (id: number) => {
+    if (window.confirm("Are you sure you want to delete this event?")) {
+      try {
+        await deleteEvent(id);
+        toast.success("Event deleted successfully");
+        loadData();
+      } catch (error) {
+        console.error("Failed to delete event", error);
+        toast.error("Failed to delete event");
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   // Calculate stats
-  const totalEvents = mockEvents.length;
-  const upcomingEvents = mockEvents.filter((e) => e.date >= new Date()).length;
-  const totalBookings = mockBookings.length;
-  const totalRevenue = mockBookings
-    .filter((b) => b.status === "confirmed")
-    .reduce((sum, b) => sum + b.totalPrice, 0);
-  const totalClients = mockClients.length;
+  const activeBookings = bookings.filter(b => b.status !== 'cancelled');
+  
+  const totalEvents = events.length;
+  const upcomingEvents = events.filter((e) => new Date(e.date) >= new Date()).length;
+  const totalBookings = activeBookings.length;
+  const totalRevenue = activeBookings.reduce((sum, b) => sum + Number(b.total_amount), 0);
+  // Unique clients based on email (from active bookings)
+  const totalClients = new Set(activeBookings.map(b => b.email)).size;
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-accent" />
+          <p className="text-muted-foreground">Loading Dashboard...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -49,10 +100,7 @@ const AdminPage = () => {
               Manage your events, bookings, and attendees
             </p>
           </div>
-          <Button className="gap-2 gradient-primary text-primary-foreground">
-            <Plus className="h-4 w-4" />
-            Create Event
-          </Button>
+          <CreateEventDialog onEventCreated={loadData} />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -113,7 +161,7 @@ const AdminPage = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Revenue</p>
-                      <p className="text-3xl font-bold">${totalRevenue}</p>
+                      <p className="text-3xl font-bold">${totalRevenue.toFixed(2)}</p>
                       <p className="text-xs text-success mt-1 flex items-center gap-1">
                         <TrendingUp className="h-3 w-3" /> +8% this month
                       </p>
@@ -153,8 +201,8 @@ const AdminPage = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockEvents
-                      .filter((e) => e.date >= new Date())
+                    {events
+                      .filter((e) => new Date(e.date) >= new Date())
                       .slice(0, 4)
                       .map((event) => (
                         <div
@@ -163,19 +211,18 @@ const AdminPage = () => {
                         >
                           <div className="flex items-center gap-3">
                             <img
-                              src={event.image}
+                              src={event.img}
                               alt={event.title}
                               className="w-12 h-12 rounded-lg object-cover"
                             />
                             <div>
                               <p className="font-medium">{event.title}</p>
                               <p className="text-sm text-muted-foreground">
-                                {format(event.date, "MMM d")} • {event.bookedCount}/
-                                {event.capacity} booked
+                                {format(new Date(event.date), "MMM d")} • {event.available_seats} seats left
                               </p>
                             </div>
                           </div>
-                          <Badge variant="outline">{event.category}</Badge>
+                          {/* Category removed as not in API */}
                         </div>
                       ))}
                   </div>
@@ -190,9 +237,7 @@ const AdminPage = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockBookings.slice(0, 4).map((booking) => {
-                      const client = mockClients.find((c) => c.id === booking.clientId);
-                      const event = mockEvents.find((e) => e.id === booking.eventId);
+                    {bookings.slice(0, 5).map((booking) => {
                       return (
                         <div
                           key={booking.id}
@@ -200,33 +245,26 @@ const AdminPage = () => {
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-semibold">
-                              {client?.name.charAt(0)}
+                              {(booking.name || "?").charAt(0)}
                             </div>
                             <div>
-                              <p className="font-medium">{client?.name}</p>
+                              <p className="font-medium">{booking.name || "Unknown User"}</p>
                               <p className="text-sm text-muted-foreground">
-                                {event?.title}
+                                {booking.event_title}
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium">${booking.totalPrice}</p>
-                            <Badge
-                              variant={
-                                booking.status === "confirmed"
-                                  ? "default"
-                                  : booking.status === "pending"
-                                  ? "secondary"
-                                  : "destructive"
-                              }
-                              className={
-                                booking.status === "confirmed"
-                                  ? "bg-success/20 text-success"
-                                  : ""
-                              }
-                            >
-                              {booking.status}
-                            </Badge>
+                            <p className={`font-medium ${booking.status === 'cancelled' ? 'text-muted-foreground line-through' : ''}`}>
+                              ${booking.total_amount}
+                            </p>
+                            {booking.status === 'cancelled' ? (
+                              <span className="text-xs text-destructive font-medium">Cancelled</span>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(booking.booking_date).toLocaleDateString()}
+                              </p>
+                            )}
                           </div>
                         </div>
                       );
@@ -245,19 +283,18 @@ const AdminPage = () => {
                     <TableRow>
                       <TableHead>Event</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead className="text-center">Capacity</TableHead>
+                      <TableHead className="text-center">Available Seats</TableHead>
                       <TableHead className="text-right">Price</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockEvents.map((event) => (
+                    {events.map((event) => (
                       <TableRow key={event.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <img
-                              src={event.image}
+                              src={event.img}
                               alt={event.title}
                               className="w-12 h-12 rounded-lg object-cover"
                             />
@@ -271,23 +308,15 @@ const AdminPage = () => {
                         </TableCell>
                         <TableCell>
                           <div>
-                            <p>{format(event.date, "MMM d, yyyy")}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {event.time}
-                            </p>
+                            <p>{format(new Date(event.date), "MMM d, yyyy")}</p>
+                            {/* Time not in API yet */}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{event.category}</Badge>
-                        </TableCell>
                         <TableCell className="text-center">
-                          <span className="font-medium">{event.bookedCount}</span>
-                          <span className="text-muted-foreground">
-                            /{event.capacity}
-                          </span>
+                          <span className="font-medium">{event.available_seats}</span>
                         </TableCell>
                         <TableCell className="text-right">
-                          {event.price ? `$${event.price}` : "Free"}
+                          {event.price ? `₹${event.price}` : "Free"}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
@@ -296,13 +325,12 @@ const AdminPage = () => {
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </Link>
-                            <Button variant="ghost" size="icon">
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                            <EditEventDialog event={event} onEventUpdated={loadData} />
                             <Button
                               variant="ghost"
                               size="icon"
                               className="text-destructive"
+                              onClick={() => handleDeleteEvent(event.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -325,57 +353,44 @@ const AdminPage = () => {
                       <TableHead>Client</TableHead>
                       <TableHead>Event</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead className="text-center">Tickets</TableHead>
                       <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-center">Quantity</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockBookings.map((booking) => {
-                      const client = mockClients.find((c) => c.id === booking.clientId);
-                      const event = mockEvents.find((e) => e.id === booking.eventId);
+                    {bookings.map((booking) => {
                       return (
                         <TableRow key={booking.id}>
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-sm font-semibold text-primary-foreground">
-                                {client?.name.charAt(0)}
+                                {(booking.name || "?").charAt(0)}
                               </div>
                               <div>
-                                <p className="font-medium">{client?.name}</p>
+                                <p className="font-medium">{booking.name || "Unknown User"}</p>
                                 <p className="text-sm text-muted-foreground">
-                                  {client?.email}
+                                  {booking.email}
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>{event?.title}</TableCell>
+                          <TableCell>{booking.event_title}</TableCell>
                           <TableCell>
-                            {format(booking.createdAt, "MMM d, yyyy")}
+                            {new Date(booking.booking_date).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-center">
-                            {booking.ticketCount}
+                            {booking.status === 'cancelled' ? (
+                              <Badge variant="destructive" className="text-[10px] px-2 py-0.5 h-5">Cancelled</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-[10px] px-2 py-0.5 h-5 bg-green-100 text-green-700 hover:bg-green-100">Confirmed</Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge
-                              variant={
-                                booking.status === "confirmed"
-                                  ? "default"
-                                  : booking.status === "pending"
-                                  ? "secondary"
-                                  : "destructive"
-                              }
-                              className={
-                                booking.status === "confirmed"
-                                  ? "bg-success text-success-foreground"
-                                  : ""
-                              }
-                            >
-                              {booking.status}
-                            </Badge>
+                            {booking.quantity}
                           </TableCell>
-                          <TableCell className="text-right font-medium">
-                            ${booking.totalPrice}
+                          <TableCell className={`text-right font-medium ${booking.status === 'cancelled' ? 'text-muted-foreground line-through' : ''}`}>
+                            ${booking.total_amount}
                           </TableCell>
                         </TableRow>
                       );

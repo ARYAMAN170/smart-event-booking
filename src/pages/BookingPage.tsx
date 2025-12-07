@@ -272,12 +272,12 @@ const BookingPage = () => {
                 <div className="border-t border-border pt-4 space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">1 × General Admission</span>
-                    <span>{event.price ? `$${event.price}` : "Free"}</span>
+                    <span>{event.price ? `₹${event.price}` : "Free"}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
                     <span>Total</span>
                     <span className="text-gradient-primary">
-                      {event.price ? `$${event.price}` : "Free"}
+                      {event.price ? `₹${event.price}` : "Free"}
                     </span>
                   </div>
                 </div>
